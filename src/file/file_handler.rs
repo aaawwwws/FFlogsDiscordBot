@@ -1,4 +1,6 @@
-use std::{fs, io, io::Write, path::Path};
+use std::{io, io::Write};
+
+use crate::request::res_json;
 
 pub struct FileHandler;
 
@@ -7,23 +9,29 @@ impl FileHandler {
         println!("{}", msg);
         let mut cin = String::new();
         let _ = io::stdin().read_line(&mut cin)?;
-        Ok(cin)
+        Ok(cin.trim().to_string())
     }
-    pub fn web_hook() -> anyhow::Result<String> {
-        let file_name: String = String::from("konoyonoowari.txt");
-        let file_check =
-            Path::new(&file_name).exists() && fs::metadata(&file_name).unwrap().is_file();
-        if file_check {
-            //ファイルが存在する場合 or 2回目以降の処理
-            let f = fs::read_to_string(&file_name)?;
-            return Ok(f);
+
+    pub fn web_hook(file_name: &str, token: Option<String>) -> anyhow::Result<res_json::Konoyonoowari> {
+        if let Some(toke) = token {
+            //初回起動
+            let hook_url = FileHandler::input("webhookのURLを入力してください")?;
+            let mut fout = std::fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .open(&file_name)
+                .unwrap();
+            let json = res_json::Konoyonoowari {
+                key: toke,
+                webhook: hook_url,
+            };
+            let serialized = serde_json::to_string(&json).unwrap();
+            let _ = fout.write_all(serialized.as_bytes());
+            return Ok(json)
         } else {
-            //初回起動 or ファイルが存在しない場合
-            let mut hook_url = FileHandler::input("webhookのURLを入力してください")?;
-            let mut file = fs::File::create(&file_name)?;
-            write!(&mut file, "{}", hook_url)?;
-            let f = fs::read_to_string(&file_name)?;
-            return Ok(f);
+            let content = std::fs::read_to_string(&file_name).unwrap();
+            let deserialized: res_json::Konoyonoowari = serde_json::from_str(&content).unwrap();
+            return Ok(deserialized);
         }
     }
 }
