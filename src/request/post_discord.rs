@@ -1,5 +1,4 @@
 use reqwest::Client;
-use serde_json::json;
 
 pub struct PostDiscord {
     _client: Client,
@@ -14,7 +13,7 @@ impl PostDiscord {
         };
     }
 
-    pub async fn send_msg(&self, id: &str, fight_id: u64) -> anyhow::Result<()> {
+    pub async fn send_msg(&self, id: &str, fight_id: u64, hook_url:&str) -> anyhow::Result<()> {
         let url = format!("https://ja.fflogs.com/reports/{}#fight={}", id, fight_id);
 
         let query = format!(
@@ -26,7 +25,7 @@ impl PostDiscord {
 
         let _ = self
             ._client
-            .post(dotenv::var("HOOK").unwrap())
+            .post(hook_url)
             .header("Content-Type", "application/json")
             .body(query)
             .send()
