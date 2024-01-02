@@ -2,7 +2,9 @@ use crate::request::res_json::ResJson;
 use reqwest::Client;
 use serde_json::{Map, Value};
 
-pub async fn last_fight(id: &str) -> anyhow::Result<u64> {
+use super::post_discord::PostDiscord;
+
+pub async fn last_fight(id: &str) -> anyhow::Result<PostDiscord> {
     let client = Client::new();
     let mut map = Map::new();
     let query = format!(
@@ -21,5 +23,6 @@ pub async fn last_fight(id: &str) -> anyhow::Result<u64> {
         .await?
         .json::<ResJson>()
         .await?;
-    Ok(res.get_figths().iter().last().unwrap().get_id())
+    let post = PostDiscord::new(client,res.get_figths().iter().last().unwrap().get_id());
+    Ok(post)
 }
