@@ -8,7 +8,7 @@ impl FileHandler {
     pub fn input(msg: &str) -> anyhow::Result<String> {
         println!("{}", msg);
         let mut cin = String::new();
-        let _ = io::stdin().read_line(&mut cin)?;
+        let _ = io::stdin().read_line(&mut cin).expect("test");
         Ok(cin.trim().to_string())
     }
 
