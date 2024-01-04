@@ -19,7 +19,7 @@ impl Logs {
                 .await?;
             let json: Object = res.json().await?;
             Ok(Some(json.access_token))
-        }else {
+        } else {
             //二度目以降
             return Ok(None);
         }

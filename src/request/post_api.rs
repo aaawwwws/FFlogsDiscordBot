@@ -23,6 +23,6 @@ pub async fn last_fight(id: &str,key:&str) -> anyhow::Result<PostDiscord> {
         .await?
         .json::<ResJson>()
         .await?;
-    let post = PostDiscord::new(client, res.get_figths().iter().last().unwrap().get_id());
+    let post = PostDiscord::new(client, Some(res.get_figths().iter().last().unwrap().get_id()));
     Ok(post)
 }

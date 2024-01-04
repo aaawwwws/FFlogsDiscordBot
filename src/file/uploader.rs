@@ -13,10 +13,15 @@ impl Uploader {
     }
 
     pub fn open_uploader(&self) -> anyhow::Result<()> {
-        let input =
-            crate::file::file_handler::FileHandler::input("fflogsuploaderを起動しますか？ y/n")?;
-        if input == "n" {
-            return Ok(());
+        loop {
+            let input = crate::file::file_handler::FileHandler::input(
+                "fflogsuploaderを起動しますか？ y/n",
+            )?;
+            match input.as_str() {
+                "y" => break,
+                "n" => return Ok(()),
+                _ => (),
+            }
         }
         let username = self.get_user()?;
         let path = format!(

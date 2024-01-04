@@ -9,15 +9,15 @@ use tokio::time;
 async fn main() -> anyhow::Result<()> {
     //色々と保存するファイル名
     let file_name: String = String::from("konoyonoowari.json");
+    //ここからはlogsのapiキーを取得する
+    let token = request::logs::Logs::get_token(&file_name).await?;
+    //ここからdiscordのwebhookキーを取得する
+    let hook_url = FileHandler::web_hook(&file_name, token).await?;
     //アップローダー起動してみるか
     let uploader = file::uploader::Uploader;
     if let Err(_) = uploader.open_uploader() {
         println!("fflogsuploaderを起動できませんでした");
     }
-    //ここからはlogsのapiキーを取得する
-    let token = request::logs::Logs::get_token(&file_name).await?;
-    //ここからdiscordのwebhookキーを取得する
-    let hook_url = FileHandler::web_hook(&file_name, token)?;
     //ここからlog取得やメッセージ送信reportId
     let id = FFlogs::url_input()?;
     let mut figth: Option<u64> = None;
@@ -26,18 +26,18 @@ async fn main() -> anyhow::Result<()> {
         match figth {
             Some(v) => {
                 let last_fight = last_fight(&id, &hook_url.key).await?;
-                if last_fight.get_id() > v {
+                if last_fight.get_id().unwrap() > v {
                     last_fight
-                        .send_msg(&id, last_fight.get_id(), &hook_url.webhook)
+                        .new_msg(&id, last_fight.get_id().unwrap(), &hook_url.webhook)
                         .await?;
-                    figth = Some(last_fight.get_id());
+                    figth = Some(last_fight.get_id().unwrap());
                 }
             }
             None => {
                 let last_fight = last_fight(&id, &hook_url.key).await?;
-                figth = Some(last_fight.get_id());
+                figth = Some(last_fight.get_id().unwrap());
                 last_fight
-                    .send_msg(&id, last_fight.get_id(), &hook_url.webhook)
+                    .new_msg(&id, last_fight.get_id().unwrap(), &hook_url.webhook)
                     .await?;
             }
         }
