@@ -13,29 +13,29 @@ async fn main() -> anyhow::Result<()> {
     let token = request::logs::Logs::get_token(&file_name).await?;
     //ここからdiscordのwebhookキーを取得する
     let hook_url = FileHandler::web_hook(&file_name, token)?;
-    //ここからlog取得やメッセージ送信
+    //ここからlog取得やメッセージ送信reportId
     let id = FFlogs::url_input()?;
     let mut figth: Option<u64> = None;
+    println!("実行中");
     loop {
         match figth {
             Some(v) => {
-                let last_fight = last_fight(&id,&hook_url.key).await?;
+                let last_fight = last_fight(&id, &hook_url.key).await?;
                 if last_fight.get_id() > v {
                     last_fight
                         .send_msg(&id, last_fight.get_id(), &hook_url.webhook)
                         .await?;
                     figth = Some(last_fight.get_id());
                 }
-                let _ = time::sleep(time::Duration::from_secs(2)).await;
             }
             None => {
-                let last_fight = last_fight(&id,&hook_url.key).await?;
+                let last_fight = last_fight(&id, &hook_url.key).await?;
                 figth = Some(last_fight.get_id());
                 last_fight
                     .send_msg(&id, last_fight.get_id(), &hook_url.webhook)
                     .await?;
-                let _ = time::sleep(time::Duration::from_secs(2)).await;
             }
         }
+        let _ = time::sleep(time::Duration::from_secs(1)).await;
     }
 }

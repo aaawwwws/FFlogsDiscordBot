@@ -29,6 +29,7 @@ impl FileHandler {
             let _ = fout.write_all(serialized.as_bytes());
             return Ok(json)
         } else {
+            //二回目以降の起動
             let content = std::fs::read_to_string(&file_name).unwrap();
             let deserialized: res_json::Konoyonoowari = serde_json::from_str(&content).unwrap();
             return Ok(deserialized);
