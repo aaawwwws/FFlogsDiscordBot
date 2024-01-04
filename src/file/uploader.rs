@@ -1,5 +1,5 @@
-use std::process::Command;
-
+use console::Term;
+use std::process::{Command, Stdio};
 pub struct Uploader;
 
 impl Uploader {
@@ -13,16 +13,21 @@ impl Uploader {
     }
 
     pub fn open_uploader(&self) -> anyhow::Result<()> {
-        let input = crate::file::file_handler::FileHandler::input("fflogsuploaderを起動しますか？ y/n")?;
+        let input =
+            crate::file::file_handler::FileHandler::input("fflogsuploaderを起動しますか？ y/n")?;
         if input == "n" {
-            return Ok(())
+            return Ok(());
         }
         let username = self.get_user()?;
         let path = format!(
             r"C:\Users\{}\AppData\Local\Programs\FF Logs Uploader\FF Logs Uploader.exe",
             username
         );
-        let _ = Command::new(path).output()?;
+        let _ = Command::new(path)
+            .stdin(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()?;
+        Term::stdout().clear_screen()?;
         return Ok(());
     }
 }

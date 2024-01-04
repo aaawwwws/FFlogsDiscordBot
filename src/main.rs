@@ -11,8 +11,7 @@ async fn main() -> anyhow::Result<()> {
     let file_name: String = String::from("konoyonoowari.json");
     //アップローダー起動してみるか
     let uploader = file::uploader::Uploader;
-    if let Err(e) = uploader.open_uploader() {
-        println!("{}",e);
+    if let Err(_) = uploader.open_uploader() {
         println!("fflogsuploaderを起動できませんでした");
     }
     //ここからはlogsのapiキーを取得する
