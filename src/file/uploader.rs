@@ -9,17 +9,19 @@ impl Uploader {
             .output()?;
 
         let username = String::from_utf8(output.stdout)?.trim().to_string();
-        println!("Username: {}", username);
         return Ok(username);
     }
 
     pub fn open_uploader(&self) -> anyhow::Result<()> {
+        let input = crate::file::file_handler::FileHandler::input("fflogsuploaderを起動しますか？ y/n")?;
+        if input == "n" {
+            return Ok(())
+        }
         let username = self.get_user()?;
         let path = format!(
             r"C:\Users\{}\AppData\Local\Programs\FF Logs Uploader\FF Logs Uploader.exe",
             username
         );
-        println!("{}", path);
         let _ = Command::new(path).output()?;
         return Ok(());
     }
