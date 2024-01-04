@@ -9,6 +9,12 @@ use tokio::time;
 async fn main() -> anyhow::Result<()> {
     //色々と保存するファイル名
     let file_name: String = String::from("konoyonoowari.json");
+    //アップローダー起動してみるか
+    let uploader = file::uploader::Uploader;
+    if let Err(e) = uploader.open_uploader() {
+        println!("{}",e);
+        println!("fflogsuploaderを起動できませんでした");
+    }
     //ここからはlogsのapiキーを取得する
     let token = request::logs::Logs::get_token(&file_name).await?;
     //ここからdiscordのwebhookキーを取得する

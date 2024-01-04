@@ -21,9 +21,13 @@ impl FFlogs {
             }
         }
         if url_split.last().unwrap().contains("#") {
+            //report以降のコピーを取る
            let last = url_split.last().unwrap().clone();
+           //コピー取ったやつを"#"で分ける。
            let split: Vec<&str> = last.split("#").collect();
+           //元のデータの最後を削除
            url_split.pop();
+           //"#"の左辺を追加
            url_split.push(split.first().unwrap().to_string())
         }
         //reportidのみ取り出す
