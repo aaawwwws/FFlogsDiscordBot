@@ -20,22 +20,22 @@ async fn main() -> anyhow::Result<()> {
     }
     //ここからlog取得やメッセージ送信reportId
     let id = FFlogs::url_input()?;
-    let mut figth: Option<u64> = None;
+    let mut fight: Option<u64> = None;
     println!("実行中");
     loop {
-        match figth {
+        match fight {
             Some(v) => {
                 let last_fight = last_fight(&id, &hook_url.key).await?;
                 if last_fight.get_id().unwrap() > v {
                     last_fight
                         .new_msg(&id, last_fight.get_id().unwrap(), &hook_url.webhook)
                         .await?;
-                    figth = Some(last_fight.get_id().unwrap());
+                    fight = Some(last_fight.get_id().unwrap());
                 }
             }
             None => {
                 let last_fight = last_fight(&id, &hook_url.key).await?;
-                figth = Some(last_fight.get_id().unwrap());
+                fight = Some(last_fight.get_id().unwrap());
                 last_fight
                     .new_msg(&id, last_fight.get_id().unwrap(), &hook_url.webhook)
                     .await?;

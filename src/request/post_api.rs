@@ -4,7 +4,7 @@ use serde_json::{Map, Value};
 
 use super::post_discord::PostDiscord;
 
-pub async fn last_fight(id: &str,key:&str) -> anyhow::Result<PostDiscord> {
+pub async fn last_fight(id: &str, key: &str) -> anyhow::Result<PostDiscord> {
     let client = Client::new();
     let mut map = Map::new();
     let query = format!(
@@ -23,6 +23,9 @@ pub async fn last_fight(id: &str,key:&str) -> anyhow::Result<PostDiscord> {
         .await?
         .json::<ResJson>()
         .await?;
-    let post = PostDiscord::new(client, Some(res.get_figths().iter().last().unwrap().get_id()));
+    let post = PostDiscord::new(
+        client,
+        Some(res.get_figths().iter().last().unwrap().get_id()),
+    );
     Ok(post)
 }
