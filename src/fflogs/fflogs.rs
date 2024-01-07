@@ -4,6 +4,7 @@ impl FFlogs {
     pub fn url_input() -> anyhow::Result<String> {
         let mut url_split: Vec<String> = Vec::new();
         loop {
+            url_split.clear();
             let url = FileHandler::input("レポートのURLを入力してください\n例:https://ja.fflogs.com/reports/aaaaaaaaaaaaaaaaaaaaaaaaaa")?;
             //URLが正しいかの確認
             let a: Vec<&str> = url.split("/").collect();

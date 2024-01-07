@@ -8,7 +8,7 @@ pub async fn last_fight(id: &str, key: &str) -> anyhow::Result<PostDiscord> {
     let client = Client::new();
     let mut map = Map::new();
     let query = format!(
-        "query {{ reportData {{ report(code:\"{}\") {{ fights {{ id }} }} }} }}",
+        "query {{ reportData {{ report(code:\"{}\") {{ fights {{ id, kill, name }} }} }} }}",
         id
     );
     map.insert("query".to_owned(), Value::String(query));
@@ -23,9 +23,12 @@ pub async fn last_fight(id: &str, key: &str) -> anyhow::Result<PostDiscord> {
         .await?
         .json::<ResJson>()
         .await?;
+    let res_data = res.get_figths().iter().last().unwrap();
     let post = PostDiscord::new(
         client,
-        Some(res.get_figths().iter().last().unwrap().get_id()),
+        Some(res_data.get_id()),
+        res_data.get_killtype(),
+        res_data.get_name(),
     );
     Ok(post)
 }
