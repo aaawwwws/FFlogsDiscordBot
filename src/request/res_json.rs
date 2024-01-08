@@ -60,7 +60,7 @@ pub struct Object {
     expires_in: i64,
     token_type: String,
 }
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Konoyonoowari {
     pub key: String,
     pub webhook: String,

@@ -1,7 +1,7 @@
 use reqwest::Client;
 
 use super::res_json;
-
+#[derive(Debug)]
 pub struct PostDiscord {
     _client: Client,
     _id: Option<u64>,
@@ -22,25 +22,6 @@ impl PostDiscord {
             _killtype: killtype,
             _name: name,
         };
-    }
-
-    pub async fn new_msg(
-        &self,
-        id: &str,
-        wipe_count: &mut u64,
-        datetime: &str,
-        fight_id: u64,
-        area_name: &str,
-        hook_url: &str,
-    ) -> anyhow::Result<()> {
-        let url = format!("https://ja.fflogs.com/reports/{}#fight={}", id, fight_id);
-        let msg = format!(
-            "時刻:{} エリア:{} {}ワイプ目:{}",
-            datetime, area_name, *wipe_count, url
-        );
-        let _ = self.send_msg(&msg, hook_url).await?;
-        *wipe_count += 1;
-        return Ok(());
     }
 
     pub async fn send_msg(&self, content: &str, hook_url: &str) -> anyhow::Result<u16> {
