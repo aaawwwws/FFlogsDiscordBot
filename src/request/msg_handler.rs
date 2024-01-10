@@ -1,6 +1,6 @@
 use crate::datetime;
 
-use super::{post_api::last_fight, post_discord::PostDiscord, res_json::Konoyonoowari};
+use super::{post_discord::PostDiscord, res_json::Konoyonoowari};
 
 #[derive(Debug)]
 pub struct MsgHandler {
@@ -24,7 +24,7 @@ impl MsgHandler {
         wipe_count: u64,
         last_fight: &PostDiscord,
         fight: &mut Option<u64>,
-    ) -> anyhow::Result<u64> {
+    ) -> anyhow::Result<()> {
         let datetime = datetime::DateTime::get_dt();
         let time = datetime::DateTime::get_time();
         //初回時のみtrue
@@ -39,12 +39,11 @@ impl MsgHandler {
             fight.unwrap()
         );
         let msg = format!(
-            "wipe!   時刻:{}   ボス:{}   {}ワイプ目   ログ:{}",
+            "**wipe!**   時刻:{}   ボス(エリア):{}   ワイプ回数:{}   ログ:{}",
             time, area_name, wipe_count, url
         );
         let _ = last_fight.send_msg(&msg, &self._hook.webhook).await?;
-        let count = wipe_count + 1;
-        return Ok(count);
+        return Ok(());
     }
 
     pub async fn kill_msg(
@@ -68,7 +67,7 @@ impl MsgHandler {
             fight.unwrap()
         );
         let msg = format!(
-            "kill!   時刻:{}   ボス:{}   ワイプ回数{}   ログ:{}   ",
+            "**kill!**   時刻:{}   ボス(エリア):{}   ワイプ回数:{}   ログ:{}   ",
             time, area_name, wipe_count, url
         );
         let count = 0;

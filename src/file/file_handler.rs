@@ -1,10 +1,20 @@
-use std::{fs, io, io::Write, path::Path};
+use std::{
+    collections::{hash_map, HashMap},
+    fs::{self, File, OpenOptions},
+    io::Write,
+    io::{self, Read},
+    path::Path,
+};
 
-use reqwest::Client;
+use base64::read;
+use reqwest::{blocking::get, Client};
 
-use crate::request::{
-    self,
-    res_json::{self, JsonBool},
+use crate::{
+    file::{self, wipe_data::WipeData},
+    request::{
+        self,
+        res_json::{self, JsonBool},
+    },
 };
 
 pub struct FileHandler;
@@ -58,20 +68,54 @@ impl FileHandler {
         }
     }
 
-    pub fn wipe_count(wipe_count: u64) -> anyhow::Result<()> {
-        let file_name = String::from("wipe_count.txt");
-        let file_check =
-            Path::new(&file_name).exists() && fs::metadata(&file_name).unwrap().is_file();
-        if file_check {
-            //ファイルがある場合の処理
-            let file = std::fs::read_to_string(&file_name)?;
-            let count = file.parse::<u64>().unwrap();
-            let total_wipe = count + wipe_count;
-            let _ = std::fs::write(&file_name, total_wipe.to_string())?;
+    pub fn wipe_count(wipe_data: &WipeData) -> anyhow::Result<()> {
+        let file_name = String::from("wipe_count.json");
+        //ファイルの処理
+        if FileHandler::is_file(&file_name) {
+            //ファイルがある場合
+            let mut read_file = fs::OpenOptions::new().read(true).open(&file_name)?;
+            let mut json = String::new();
+            let _ = read_file.read_to_string(&mut json);
+            println!("1{}", json);
+            let mut json_file: Vec<WipeData> = serde_json::from_str(&json)?;
+            println!("2{:?}", json_file);
+            json_file.push(wipe_data.clone());
+            for i in 0..json.len() {
+                for j in i + 1..json.len() {
+                    //iとjを比較してエリアネームが同じだったら削除
+                    if let Some(e) = json_file.get(j) {
+                        if json_file.get(i).unwrap().area_name.eq(e.area_name.as_str()) {
+                            json_file.remove(j);
+                        };
+                    } else {
+                        break;
+                    }
+                }
+            }
+            println!("{:?}", json_file);
+            let serialized: String = if json_file.is_empty() {
+                json
+            } else {
+                let serialized = serde_json::to_string(&json_file)?;
+                serialized
+            };
+            let mut write = fs::OpenOptions::new()
+                .write(true)
+                .truncate(true)
+                .open(&file_name)?;
+            write.write_all(serialized.as_bytes())?;
         } else {
-            //ない場合の処理
-            let _ = std::fs::File::create(&file_name)?;
+            //ファイルがない場合
+            let array = [wipe_data];
+            let serialized = serde_json::to_string(&array)?;
+            let mut file = fs::File::create(&file_name)?;
+            file.write_all(serialized.as_bytes())?;
         }
+
         return Ok(());
+    }
+
+    fn is_file(file_name: &str) -> bool {
+        return Path::new(file_name).exists() && fs::metadata(file_name).unwrap().is_file();
     }
 }

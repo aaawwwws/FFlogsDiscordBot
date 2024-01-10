@@ -1,3 +1,5 @@
+use std::collections::{hash_map, HashMap};
+
 use crate::request::res_json::ResJson;
 use reqwest::Client;
 use serde_json::{Map, Value};

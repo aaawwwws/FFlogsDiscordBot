@@ -12,6 +12,7 @@ impl ResJson {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+#[allow(non_snake_case)]
 struct Data {
     reportData: ReportData,
 }

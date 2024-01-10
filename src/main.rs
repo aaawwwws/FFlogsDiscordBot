@@ -2,10 +2,24 @@ mod datetime;
 mod fflogs;
 mod file;
 mod request;
+use std::{
+    borrow::BorrowMut,
+    collections::{hash_map, HashMap},
+    fs::File,
+    sync::Arc,
+};
+use tokio::{
+    io::{AsyncRead, AsyncReadExt},
+    sync::{mpsc, RwLock},
+};
+
 use fflogs::fflogs::FFlogs;
 use file::file_handler::FileHandler;
 use request::{post_api::last_fight, res_json::JsonBool};
-use tokio::time;
+use tokio::{
+    io::{stdin, AsyncBufReadExt, BufReader},
+    sync::Mutex,
+};
 
 use crate::request::msg_handler::MsgHandler;
 
@@ -22,9 +36,8 @@ async fn main() -> anyhow::Result<()> {
     if let Err(_) = uploader.open_uploader() {
         println!("fflogsuploaderを起動できませんでした");
     }
-    //ここからlog取得やメッセージ送信reportId
+    //ここからlog取得やメッセージ送信
     let id = FFlogs::url_input()?;
-
     let mut fight: Option<u64> = None;
     let mut wipe_count: u64 = 0;
     println!("実行中");
@@ -58,23 +71,37 @@ async fn main() -> anyhow::Result<()> {
                         //この条件分岐がtrueにならない場合は何も更新が起こっていないので何も起こらない
                         if last_fight.get_id().unwrap() > v {
                             //ワイプしてログが更新された時の動作
-                            //なんとなく値渡しして上書きしたほうがわかりやすいきがした。
-                            wipe_count = msg_handler
+                            //なんとなく値渡しして上書きしたほうがわかりやすい気がした。
+                            wipe_count += 1;
+                            let _ = msg_handler
                                 .wipe_msg(&area_name, wipe_count, &last_fight, &mut fight)
                                 .await?;
+                            let wipe_data = file::wipe_data::WipeData {
+                                area_name:area_name.clone(),
+                                wipe_count:wipe_count,
+                            };
+                            FileHandler::wipe_count(&wipe_data)?
                         }
                     }
                     None => {
                         //初回起動のときの動作(ほぼテスト)
-                        //なんとなく値渡しして上書きしたほうがわかりやすいきがした。
-                        wipe_count = msg_handler
+                        //なんとなく値渡しして上書きしたほうがわかりやすい気がした。
+                        wipe_count += 1;
+                        let _ = msg_handler
                             .wipe_msg(&area_name, wipe_count, &last_fight, &mut fight)
                             .await?;
+                        //これってもはや連想配列使う意味を感じられなくなってきた。
+                        let wipe_data = file::wipe_data::WipeData {
+                            area_name:area_name.clone(),
+                            wipe_count:wipe_count,
+                        };
+                        //move
+                        let _ = FileHandler::wipe_count(&wipe_data)?;
                     }
                 },
                 JsonBool::NULL => (),
             }
         }
-        let _ = time::sleep(time::Duration::from_secs(1)).await;
+        let _ = tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     }
 }
