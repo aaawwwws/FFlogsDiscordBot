@@ -1,6 +1,9 @@
-use crate::datetime;
+use crate::{datetime, file::wipe_graph};
 
-use super::{post_discord::PostDiscord, res_json::Konoyonoowari};
+use super::{
+    post_discord::PostDiscord,
+    res_json::{Konoyonoowari, Phases},
+};
 
 #[derive(Debug)]
 pub struct MsgHandler {
@@ -38,11 +41,21 @@ impl MsgHandler {
             &self._id,
             fight.unwrap()
         );
+        let wipe_phases = last_fight
+            .get_phases()
+            .clone()
+            .unwrap_or(Phases {
+                id: String::from("id"),
+                phases: 0,
+            })
+            .phases;
         let msg = format!(
-            "**wipe!**   時刻:{}   ボス(エリア):{}   ワイプ回数:{}   ログ:{}",
-            time, area_name, wipe_count, url
+            "**wipe!**   時刻:{}   エリア(フェーズ):{}(P:{})   ワイプ回数:{}   ログ:{}",
+            time, area_name, wipe_phases, wipe_count, url
         );
-        let _ = last_fight.send_msg(&msg, &self._hook.webhook).await?;
+        let _ = last_fight
+            .send_msg(&msg, &self._hook.webhook)
+            .await?;
         return Ok(());
     }
 
@@ -58,7 +71,9 @@ impl MsgHandler {
         //初回時のみtrue
         if let None = fight {
             let first_msg = format!("-----------{}-----------", &datetime);
-            let _ = last_fight.send_msg(&first_msg, &self._hook.webhook).await?;
+            let _ = last_fight
+                .send_msg(&first_msg, &self._hook.webhook)
+                .await?;
         }
         *fight = Some(last_fight.get_id().unwrap());
         let url = format!(
@@ -71,7 +86,9 @@ impl MsgHandler {
             time, area_name, wipe_count, url
         );
         let count = 0;
-        let _ = last_fight.send_msg(&msg, &self._hook.webhook).await?;
+        let _ = last_fight
+            .send_msg(&msg, &self._hook.webhook)
+            .await?;
         return Ok(count);
     }
 

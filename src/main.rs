@@ -2,31 +2,21 @@ mod datetime;
 mod fflogs;
 mod file;
 mod request;
-use std::{
-    borrow::BorrowMut,
-    collections::{hash_map, HashMap},
-    fs::File,
-    sync::Arc,
-};
-use tokio::{
-    io::{AsyncRead, AsyncReadExt},
-    sync::{mpsc, RwLock},
-};
 
 use fflogs::fflogs::FFlogs;
 use file::file_handler::FileHandler;
 use request::{post_api::last_fight, res_json::JsonBool};
-use tokio::{
-    io::{stdin, AsyncBufReadExt, BufReader},
-    sync::Mutex,
-};
 
-use crate::request::msg_handler::MsgHandler;
+use crate::{
+    file::wipe_graph::WipeGraph,
+    request::{msg_handler::MsgHandler, res_json::Phases},
+};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     //色々と保存するファイル名
     let file_name: String = String::from("konoyonoowari.json");
+    let wipe_file: String = String::from("wipe_count.json");
     //ここからはlogsのapiキーを取得する
     let token = request::logs::Logs::get_token(&file_name).await?;
     //ここからdiscordのwebhookキーを取得する
@@ -40,8 +30,14 @@ async fn main() -> anyhow::Result<()> {
     let id = FFlogs::url_input()?;
     let mut fight: Option<u64> = None;
     let mut wipe_count: u64 = 0;
+    let mut last_area = String::new();
+    let mut wipe_data: Vec<u8> = Vec::new();
     println!("実行中");
     loop {
+        let phases = Phases {
+            id: String::from("id"),
+            phases: 0,
+        };
         let msg_handler = MsgHandler::new(hook_url.clone(), id.clone(), wipe_count);
         let last_fight = last_fight(&msg_handler.get_id(), &msg_handler.get_hook().key).await?;
         //戦闘エリアが取得nullの場合はスルーする。
@@ -73,30 +69,89 @@ async fn main() -> anyhow::Result<()> {
                             //ワイプしてログが更新された時の動作
                             //なんとなく値渡しして上書きしたほうがわかりやすい気がした。
                             wipe_count += 1;
+                            if last_area.is_empty() {
+                                //初回
+                                println!("初回");
+                                last_area = area_name.clone();
+                            } else if last_area.ne(&area_name) {
+                                //エリアが違う場合リセット
+                                println!("reset");
+                                wipe_count = 1;
+                                last_area = area_name.clone();
+                            }
+
                             let _ = msg_handler
                                 .wipe_msg(&area_name, wipe_count, &last_fight, &mut fight)
                                 .await?;
-                            let wipe_data = file::wipe_data::WipeData {
-                                area_name:area_name.clone(),
-                                wipe_count:wipe_count,
+
+                            let mut wd = file::wipe_data::WipeData {
+                                area_name: area_name.clone(),
+                                wipe_count: wipe_count,
                             };
-                            FileHandler::wipe_count(&wipe_data)?
+                            //ワイプカウントファイル書き出し
+                            if let Some(areas) = FileHandler::area_list(&wipe_file)? {
+                                for area in areas {
+                                    if area.area_name.eq(&area_name) {
+                                        //同じエリアが存在したらワイプ回数のみ増やす
+                                        wd.area_name = area.area_name.clone();
+                                        wd.wipe_count = area.wipe_count + 1;
+                                        break;
+                                    }
+                                }
+                            }
+                            //初回起動
+                            else {
+                                println!("初回起動？");
+                                wd.area_name = area_name.clone();
+                                wd.wipe_count = wipe_count;
+                            }
+                            wipe_data.push(
+                                last_fight.get_phases().clone().unwrap_or(phases).phases as u8,
+                            );
+                            let file_name =
+                                WipeGraph::new().create_graph(&wipe_data, &area_name)?;
+                            let _ = FileHandler::wipe_count(&wd)?;
                         }
                     }
                     None => {
                         //初回起動のときの動作(ほぼテスト)
                         //なんとなく値渡しして上書きしたほうがわかりやすい気がした。
                         wipe_count += 1;
+                        if last_area.is_empty() {
+                            //初回
+                            println!("初回");
+                            last_area = area_name.clone();
+                        }
                         let _ = msg_handler
                             .wipe_msg(&area_name, wipe_count, &last_fight, &mut fight)
                             .await?;
-                        //これってもはや連想配列使う意味を感じられなくなってきた。
-                        let wipe_data = file::wipe_data::WipeData {
-                            area_name:area_name.clone(),
-                            wipe_count:wipe_count,
+                        let mut wd = file::wipe_data::WipeData {
+                            area_name: String::new(),
+                            wipe_count: 0,
                         };
-                        //move
-                        let _ = FileHandler::wipe_count(&wipe_data)?;
+                        //ワイプカウントファイル書き出し
+                        if let Some(areas) = FileHandler::area_list(&wipe_file)? {
+                            for area in areas {
+                                if area.area_name.eq(&area_name) {
+                                    wd.area_name = area.area_name.clone();
+                                    wd.wipe_count = area.wipe_count + 1;
+                                    break;
+                                }
+                            }
+                        }
+                        //初回起動
+                        else {
+                            wd.area_name = area_name.clone();
+                            wd.wipe_count = wipe_count;
+                        }
+                        let _ = FileHandler::wipe_count(&wd)?;
+                        wipe_data
+                            .push(last_fight.get_phases().clone().unwrap_or(phases).phases as u8);
+                        let file_name = WipeGraph::new().create_graph(&wipe_data, &area_name)?;
+                        let hook_rc = std::sync::Arc::new(hook_url.webhook.clone());
+                        let _ = last_fight
+                            .send_file("aaaaa", hook_rc.clone(), &file_name)
+                            .await?;
                     }
                 },
                 JsonBool::NULL => (),

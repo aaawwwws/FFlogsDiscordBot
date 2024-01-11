@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ResJson {
@@ -25,11 +26,14 @@ struct ReportData {
 struct Report {
     fights: Vec<Figth>,
 }
+
 #[derive(Serialize, Deserialize, Debug)]
+#[allow(non_snake_case)]
 pub struct Figth {
     id: u64,
     kill: serde_json::Value,
     name: serde_json::Value,
+    phaseTransitions: serde_json::Value,
 }
 
 impl Figth {
@@ -54,6 +58,23 @@ impl Figth {
             _ => None,
         }
     }
+
+    pub fn get_phases(&self) -> anyhow::Result<Option<Phases>> {
+        match &self.phaseTransitions {
+            serde_json::Value::Array(phases) => {
+                let phases_map = phases.last().unwrap().as_object().unwrap();
+                if let serde_json::Value::Number(num) = phases_map.get("id").unwrap() {
+                    let p = Phases {
+                        id: String::from("id"),
+                        phases: num.as_i64().unwrap(),
+                    };
+                    return Ok(Some(p));
+                }
+                return Ok(None);
+            }
+            _ => Ok(None),
+        }
+    }
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Object {
@@ -71,4 +92,10 @@ pub enum JsonBool {
     TRUE,
     FALSE,
     NULL,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Phases {
+    pub id: String,
+    pub phases: i64,
 }

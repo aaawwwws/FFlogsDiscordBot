@@ -41,8 +41,12 @@ impl FileHandler {
                     None,
                     JsonBool::NULL,
                     None,
+                    None,
                 );
-                if let Ok(_) = discord.send_msg("成功", &hook_url).await {
+                if let Ok(_) = discord
+                    .send_msg("成功", &hook_url)
+                    .await
+                {
                     break hook_url;
                 } else {
                     ()
@@ -76,15 +80,14 @@ impl FileHandler {
             let mut read_file = fs::OpenOptions::new().read(true).open(&file_name)?;
             let mut json = String::new();
             let _ = read_file.read_to_string(&mut json);
-            println!("1{}", json);
             let mut json_file: Vec<WipeData> = serde_json::from_str(&json)?;
-            println!("2{:?}", json_file);
             json_file.push(wipe_data.clone());
             for i in 0..json.len() {
                 for j in i + 1..json.len() {
                     //iとjを比較してエリアネームが同じだったら削除
                     if let Some(e) = json_file.get(j) {
                         if json_file.get(i).unwrap().area_name.eq(e.area_name.as_str()) {
+                            json_file.get_mut(i).unwrap().wipe_count = wipe_data.wipe_count;
                             json_file.remove(j);
                         };
                     } else {
@@ -117,5 +120,24 @@ impl FileHandler {
 
     fn is_file(file_name: &str) -> bool {
         return Path::new(file_name).exists() && fs::metadata(file_name).unwrap().is_file();
+    }
+
+    fn open_json(file_name: &str) -> anyhow::Result<Option<String>> {
+        if !FileHandler::is_file(&file_name) {
+            return Ok(None);
+        };
+        let mut file = fs::OpenOptions::new().read(true).open(&file_name)?;
+        let mut contents = String::new();
+        file.read_to_string(&mut contents)?;
+        return Ok(Some(contents));
+    }
+
+    pub fn area_list(file_name: &str) -> anyhow::Result<Option<Vec<WipeData>>> {
+        let read_file = FileHandler::open_json(&file_name)?;
+        let Some(file_contents) = read_file else {
+            return Ok(None);
+        };
+        let json: Vec<WipeData> = serde_json::from_str(&file_contents)?;
+        return Ok(Some(json));
     }
 }

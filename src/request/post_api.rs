@@ -1,6 +1,4 @@
-use std::collections::{hash_map, HashMap};
-
-use crate::request::res_json::ResJson;
+use crate::request::res_json::{ResJson, Phases};
 use reqwest::Client;
 use serde_json::{Map, Value};
 
@@ -10,7 +8,7 @@ pub async fn last_fight(id: &str, key: &str) -> anyhow::Result<PostDiscord> {
     let client = Client::new();
     let mut map = Map::new();
     let query = format!(
-        "query {{ reportData {{ report(code:\"{}\") {{ fights {{ id, kill, name }} }} }} }}",
+        "query {{ reportData {{ report(code:\"{}\") {{ fights {{ id, kill, name, phaseTransitions {{ id }} }} }} }} }}",
         id
     );
     map.insert("query".to_owned(), Value::String(query));
@@ -31,6 +29,7 @@ pub async fn last_fight(id: &str, key: &str) -> anyhow::Result<PostDiscord> {
         Some(res_data.get_id()),
         res_data.get_killtype(),
         res_data.get_name(),
+        res_data.get_phases()?,
     );
     Ok(post)
 }
