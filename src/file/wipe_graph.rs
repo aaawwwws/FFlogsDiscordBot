@@ -7,6 +7,9 @@ impl WipeGraph {
     }
 
     pub fn create_graph(&self, data: &Vec<u8>, area_name: &str) -> anyhow::Result<String> {
+        if data.is_empty() {
+            return Err(anyhow::anyhow!("配列が見つかりません。"));
+        }
         const FILE_NAME: &str = "graph.png";
         let root = BitMapBackend::new(FILE_NAME, (640, 480)).into_drawing_area();
 
