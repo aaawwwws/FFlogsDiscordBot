@@ -9,29 +9,29 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use crate::request::res_json::Charas;
+use crate::{
+    file::wipe_graph::WipeGraph,
+    request::{msg_handler::MsgHandler, res_json::Phases},
+};
 use fflogs::fflogs::FFlogs;
 use file::file_handler::FileHandler;
-use request::{post_api::last_fight, res_json::JsonBool};
+use request::{post_api::last_fights, res_json::JsonBool};
 use tokio::{
     io::{self, AsyncBufReadExt, AsyncReadExt},
     sync::RwLock,
     task,
 };
 
-use crate::{
-    file::wipe_graph::WipeGraph,
-    request::{msg_handler::MsgHandler, res_json::Phases},
-};
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     //色々と保存するファイル名
-    let file_name: String = String::from("konoyonoowari.json");
-    let wipe_file: String = String::from("wipe_count.json");
+    const FILE_NAME: &str = "konoyonoowari.json";
+    const WIPE_NAME: &str = "wipe_count.json";
     //ここからはlogsのapiキーを取得する
-    let token = request::logs::Logs::get_token(&file_name).await?;
+    let token = request::logs::Logs::get_token(&FILE_NAME).await?;
     //ここからdiscordのwebhookキーを取得する
-    let hook_url = FileHandler::web_hook(&file_name, token).await?;
+    let hook_url = FileHandler::web_hook(&FILE_NAME, token).await?;
     //アップローダー起動してみるか
     let uploader = file::uploader::Uploader;
     if let Err(_) = uploader.open_uploader() {
@@ -46,9 +46,11 @@ async fn main() -> anyhow::Result<()> {
     let mut last_area = String::new();
     let mut wipe_data: Vec<u8> = Vec::new();
     let mut time: i64 = 0;
+    let hook_rc = std::sync::Arc::new(hook_url.webhook.clone());
     let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(100);
     println!("実行中 endで終了できます。");
 
+    //別スレッドで入力を受け付ける
     tokio::task::spawn(async move {
         let mut reader = io::BufReader::new(io::stdin());
         loop {
@@ -67,9 +69,14 @@ async fn main() -> anyhow::Result<()> {
             phases: 0,
         };
         let msg_handler = MsgHandler::new(hook_url.clone(), id.clone(), wipe_count);
-        let last_fight = last_fight(&msg_handler.get_id(), &msg_handler.get_hook().key).await?;
+        let last_fight = last_fights(
+            &msg_handler.get_id(),
+            &msg_handler.get_hook().key,
+            request::post_api::Type::WIPE,
+        )
+        .await?;
         //戦闘エリアが取得nullの場合はスルーする。
-        if time + 2 < now_time {
+        if time + 3 < now_time {
             if let Some(area_name) = last_fight.get_name() {
                 match *last_fight.get_killtype() {
                     //倒したときの処理
@@ -81,6 +88,8 @@ async fn main() -> anyhow::Result<()> {
                                 wipe_count = msg_handler
                                     .kill_msg(&area_name, wipe_count, &last_fight, &mut fight)
                                     .await?;
+                                println!("{:?}", last_fight.get_rankings());
+                                last_fight.send_msg("a", &hook_url.webhook).await?;
                             }
                         }
                         //倒して初回起動のときの動作(ほぼテスト)
@@ -88,6 +97,13 @@ async fn main() -> anyhow::Result<()> {
                             wipe_count = msg_handler
                                 .kill_msg(&area_name, wipe_count, &last_fight, &mut fight)
                                 .await?;
+                            let lf = last_fights(
+                                &msg_handler.get_id(),
+                                &msg_handler.get_hook().key,
+                                request::post_api::Type::KILL,
+                            )
+                            .await?;
+                            lf.send_msg(&lf.get_rankings(), &hook_url.webhook).await?;
                         }
                     },
                     //ワイプしたときの処理
@@ -118,7 +134,7 @@ async fn main() -> anyhow::Result<()> {
                                     wipe_count: wipe_count,
                                 };
                                 //ワイプカウントファイル書き出し
-                                if let Some(areas) = FileHandler::area_list(&wipe_file)? {
+                                if let Some(areas) = FileHandler::area_list(&WIPE_NAME)? {
                                     for area in areas {
                                         if area.area_name.eq(&area_name) {
                                             //同じエリアが存在したらワイプ回数のみ増やす
@@ -157,7 +173,7 @@ async fn main() -> anyhow::Result<()> {
                                 wipe_count: 0,
                             };
                             //ワイプカウントファイル書き出し
-                            if let Some(areas) = FileHandler::area_list(&wipe_file)? {
+                            if let Some(areas) = FileHandler::area_list(&WIPE_NAME)? {
                                 for area in areas {
                                     if area.area_name.eq(&area_name) {
                                         wd.area_name = area.area_name.clone();
@@ -185,15 +201,34 @@ async fn main() -> anyhow::Result<()> {
         //終了するときの動作
         match tokio::time::timeout(tokio::time::Duration::from_micros(TIME_OUT), rx.recv()).await {
             Ok(Some(message)) => {
+                //めちゃくちゃすぎるからいずれどうにかしたい
                 if message.trim() == "end" {
-                    let hook_rc = std::sync::Arc::new(hook_url.webhook.clone());
-                    if let Ok(image) = WipeGraph::new().create_graph(&wipe_data, &last_area) {
-                        let _ = last_fight
-                            .send_file("aaaaa", hook_rc.clone(), &image)
-                            .await?;
-                    }
-                    let msg = format!("本日のワイプ数は{}回です。お疲れ様でした。", wipe_count);
+                    let (mw, mp) = match WipeGraph::new().create_graph(&wipe_data, &last_area) {
+                        Ok((image, mw, mp)) => {
+                            let _ = last_fight
+                                //rcの意味なくね なんでrc使ったのか思い出せない。
+                                .send_file(hook_rc.clone(), &image)
+                                .await?;
+                            (Some(mw), Some(mp))
+                        }
+                        _ => (None, None),
+                    };
+                    let msg: String = match mw {
+                        Some(phases) => {
+                            format!("本日のワイプ数は{}回で一番ワイプしたフェーズはP{}の{}回でした。活動お疲れ様でした。", wipe_count,mp.unwrap(),phases)
+                        }
+                        None => {
+                            format!(
+                                "本日のワイプ数は{}回でした。活動お疲れ様でした。",
+                                wipe_count
+                            )
+                        }
+                    };
+                    let datetime = datetime::DateTime::get_dt();
+                    let end_msg = format!("-----------{}-----------", &datetime);
                     last_fight.send_msg(&msg, &hook_url.webhook).await?;
+                    last_fight.send_msg(&end_msg, &hook_url.webhook).await?;
+                    println!("enterを押して閉じる...");
                     return Ok(());
                 }
             }

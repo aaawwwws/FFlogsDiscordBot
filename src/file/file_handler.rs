@@ -42,11 +42,9 @@ impl FileHandler {
                     JsonBool::NULL,
                     None,
                     None,
+                    None,
                 );
-                if let Ok(_) = discord
-                    .send_msg("成功", &hook_url)
-                    .await
-                {
+                if let Ok(_) = discord.send_msg("成功", &hook_url).await {
                     break hook_url;
                 } else {
                     ()

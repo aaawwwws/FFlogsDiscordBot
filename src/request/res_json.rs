@@ -1,3 +1,5 @@
+use std::clone;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -7,8 +9,20 @@ pub struct ResJson {
 }
 
 impl ResJson {
-    pub fn get_figths(&self) -> &Vec<Figth> {
-        self.data.reportData.report.fights.as_ref()
+    pub fn get_figths(&self) -> Option<&Vec<Figth>> {
+        if let Some(f) = &self.data.reportData.report.fights {
+            return Some(f.as_ref());
+        } else {
+            return None;
+        }
+    }
+
+    pub fn get_rankig_role(&self) -> Option<&Roles> {
+        if let Some(rankings) = &self.data.reportData.report.rankings.as_ref() {
+            return Some(&rankings.data.last().unwrap().roles);
+        } else {
+            return None;
+        }
     }
 }
 
@@ -24,7 +38,140 @@ struct ReportData {
 }
 #[derive(Serialize, Deserialize, Debug)]
 struct Report {
-    fights: Vec<Figth>,
+    fights: Option<Vec<Figth>>,
+    rankings: Option<DData>,
+}
+#[derive(Serialize, Deserialize, Debug)]
+struct DData {
+    data: Vec<RankingsData>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[allow(non_snake_case)]
+struct RankingsData {
+    fightID: u64,
+    partition: u64,
+    zone: u64,
+    encounter: Encounter,
+    difficulty: u64,
+    size: u64,
+    kill: u64,
+    duration: u64,
+    bracketData: f64,
+    deaths: u64,
+    damageTakenExcludingTanks: u64,
+    roles: Roles,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Roles {
+    tanks: Tank,
+    healers: Healer,
+    dps: Dps,
+}
+
+impl Roles {
+    pub fn get_tanks(&self) -> &Tank {
+        &self.tanks
+    }
+
+    pub fn get_healers(&self) -> &Healer {
+        &self.healers
+    }
+
+    pub fn get_dps(&self) -> &Dps {
+        &self.dps
+    }
+}
+
+pub trait Charas {
+    fn get_characters(&self) -> &Vec<Character>;
+}
+#[derive(Serialize, Deserialize, Debug, Clone)]
+
+pub struct Tank {
+    name: String,
+    characters: Vec<Character>,
+}
+
+impl Charas for Tank {
+    fn get_characters(&self) -> &Vec<Character> {
+        &self.characters
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+
+pub struct Healer {
+    name: String,
+    characters: Vec<Character>,
+}
+
+impl Charas for Healer {
+    fn get_characters(&self) -> &Vec<Character> {
+        &self.characters
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Dps {
+    name: String,
+    characters: Vec<Character>,
+}
+
+impl Charas for Dps {
+    fn get_characters(&self) -> &Vec<Character> {
+        &self.characters
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[allow(non_snake_case)]
+pub struct Character {
+    id: u64,
+    name: String,
+    server: Option<Server>,
+    class: String,
+    spec: String,
+    amount: f64,
+    bracketData: f32,
+    bracket: u64,
+    rank: String,
+    best: String,
+    totalParses: u64,
+    bracketPercent: u64,
+    rankPercent: u64,
+}
+
+impl Character {
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn get_class(&self) -> &str {
+        &self.class
+    }
+
+    pub fn get_amount(&self) -> &f64 {
+        &self.amount
+    }
+
+    pub fn get_rank_per(&self) -> &u64 {
+        &self.rankPercent
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct Server {
+    id: u64,
+    name: String,
+    region: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Encounter {
+    id: u64,
+    name: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
