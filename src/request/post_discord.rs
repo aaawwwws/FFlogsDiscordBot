@@ -1,4 +1,7 @@
-use std::sync::Arc;
+use std::{
+    collections::{hash_map, HashMap},
+    sync::Arc,
+};
 
 use reqwest::{header, Client};
 
@@ -142,12 +145,32 @@ impl PostDiscord {
         };
     }
     pub fn get_rankings(&self) -> String {
+        let mut job_replace: HashMap<&str, &str> = HashMap::new();
+        job_replace.insert("Astrologian", "占");
+        job_replace.insert("Bard", "詩人");
+        job_replace.insert("Black Mage", "黒");
+        job_replace.insert("Dancer", "踊");
+        job_replace.insert("DarkKnight", "暗");
+        job_replace.insert("Dragoon", "竜");
+        job_replace.insert("Gunbreaker", "ガ");
+        job_replace.insert("Machinist", "機");
+        job_replace.insert("Monk", "モ");
+        job_replace.insert("Ninja", "忍");
+        job_replace.insert("Paladin", "ナ");
+        job_replace.insert("Reaper", "リ");
+        job_replace.insert("RedMage", "赤");
+        job_replace.insert("Sage", "賢");
+        job_replace.insert("Samurai", "侍");
+        job_replace.insert("Scholar", "学");
+        job_replace.insert("Summoner", "召");
+        job_replace.insert("Warrior", "戦");
+        job_replace.insert("WhiteMage", "白");
         let mut tank = self.crate_rankings(Role::TANK);
         let mut healer = self.crate_rankings(Role::HEALER);
         let mut dps = self.crate_rankings(Role::DPS);
-        self.cut(&mut tank,Role::TANK);
+        self.cut(&mut tank, Role::TANK);
         self.cut(&mut healer, Role::HEALER);
-        self.cut(&mut dps,Role::DPS);
+        self.cut(&mut dps, Role::DPS);
         let total_rankings: Vec<RankingData> = Vec::new()
             .into_iter()
             .chain(tank)
@@ -157,20 +180,27 @@ impl PostDiscord {
         let result: Vec<String> = total_rankings
             .iter()
             .map(|r| {
+                let mut job = String::new();
+                for (k, v) in &job_replace {
+                    if r.class.eq(k) {
+                        job = r.class.replace(k, v);
+                        break;
+                    }
+                }
                 if r.rank_per == 100 {
-                    return format!("name:{} perf:{}% 金\\n", r.name, r.rank_per);
+                    return format!("{} perf:{}% 金\\n", job, r.rank_per);
                 } else if r.rank_per == 99 {
-                    return format!("name:{} perf:{}% 桃\\n", r.name, r.rank_per);
+                    return format!("{} perf:{}% 桃\\n", job, r.rank_per);
                 } else if r.rank_per <= 98 && r.rank_per >= 95 {
-                    return format!("name:{} perf:{}% 橙\\n", r.name, r.rank_per);
+                    return format!("{} perf:{}% 橙\\n", job, r.rank_per);
                 } else if r.rank_per <= 94 && r.rank_per >= 75 {
-                    return format!("name:{} perf:{}% 紫\\n", r.name, r.rank_per);
+                    return format!("{} perf:{}% 紫\\n", job, r.rank_per);
                 } else if r.rank_per <= 74 && r.rank_per >= 50 {
-                    return format!("name:{} perf:{}% 青\\n", r.name, r.rank_per);
+                    return format!("{} perf:{}% 青\\n", job, r.rank_per);
                 } else if r.rank_per <= 49 && r.rank_per >= 25 {
-                    return format!("name:{} perf:{}% 緑\\n", r.name, r.rank_per);
+                    return format!("{} perf:{}% 緑\\n", job, r.rank_per);
                 } else {
-                    return format!("name:{} perf:{}% 灰\\n", r.name, r.rank_per);
+                    return format!("{} perf:{}% 灰\\n", job, r.rank_per);
                 }
             })
             .collect();

@@ -3,13 +3,6 @@ mod fflogs;
 mod file;
 mod request;
 
-use std::{
-    borrow::{Borrow, BorrowMut},
-    io::{BufReader, Read},
-    sync::{Arc, Mutex},
-};
-
-use crate::request::res_json::Charas;
 use crate::{
     file::wipe_graph::WipeGraph,
     request::{msg_handler::MsgHandler, res_json::Phases},
@@ -17,12 +10,7 @@ use crate::{
 use fflogs::fflogs::FFlogs;
 use file::file_handler::FileHandler;
 use request::{post_api::last_fights, res_json::JsonBool};
-use tokio::{
-    io::{self, AsyncBufReadExt, AsyncReadExt},
-    sync::RwLock,
-    task,
-};
-
+use tokio::io::{self, AsyncBufReadExt};
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     //色々と保存するファイル名
@@ -46,6 +34,7 @@ async fn main() -> anyhow::Result<()> {
     let mut last_area = String::new();
     let mut wipe_data: Vec<u8> = Vec::new();
     let mut time: i64 = 0;
+    const DELAY: i64 = 3;
     let hook_rc = std::sync::Arc::new(hook_url.webhook.clone());
     let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(100);
     println!("実行中 endで終了できます。");
@@ -76,7 +65,7 @@ async fn main() -> anyhow::Result<()> {
         )
         .await?;
         //戦闘エリアが取得nullの場合はスルーする。
-        if time + 3 < now_time {
+        if time + DELAY < now_time {
             if let Some(area_name) = last_fight.get_name() {
                 match *last_fight.get_killtype() {
                     //倒したときの処理
@@ -88,12 +77,20 @@ async fn main() -> anyhow::Result<()> {
                                 wipe_count = msg_handler
                                     .kill_msg(&area_name, wipe_count, &last_fight, &mut fight)
                                     .await?;
-                                println!("{:?}", last_fight.get_rankings());
-                                last_fight.send_msg("a", &hook_url.webhook).await?;
+                                let lf = last_fights(
+                                    &msg_handler.get_id(),
+                                    &msg_handler.get_hook().key,
+                                    request::post_api::Type::KILL,
+                                )
+                                .await?;
+                             
+                                lf.send_msg(&lf.get_rankings(), &hook_url.webhook).await?;
                             }
                         }
                         //倒して初回起動のときの動作(ほぼテスト)
                         None => {
+                            wipe_count += 1;
+                            /*
                             wipe_count = msg_handler
                                 .kill_msg(&area_name, wipe_count, &last_fight, &mut fight)
                                 .await?;
@@ -104,6 +101,7 @@ async fn main() -> anyhow::Result<()> {
                             )
                             .await?;
                             lf.send_msg(&lf.get_rankings(), &hook_url.webhook).await?;
+                            */
                         }
                     },
                     //ワイプしたときの処理
@@ -160,7 +158,8 @@ async fn main() -> anyhow::Result<()> {
                             //初回起動のときの動作(ほぼテスト)
                             //なんとなく値渡しして上書きしたほうがわかりやすい気がした。
                             wipe_count += 1;
-                            if last_area.is_empty() {
+                            last_area = area_name.clone();
+                            /* 
                                 //初回
                                 println!("初回");
                                 last_area = area_name.clone();
@@ -191,6 +190,7 @@ async fn main() -> anyhow::Result<()> {
                             wipe_data.push(
                                 last_fight.get_phases().clone().unwrap_or(phases).phases as u8,
                             );
+                            */
                         }
                     },
                     JsonBool::NULL => (),

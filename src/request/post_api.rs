@@ -13,7 +13,7 @@ pub async fn last_fights(id: &str, key: &str, ty: Type) -> anyhow::Result<PostDi
     let query = match ty {
         Type::KILL => {
             format!(
-                "query {{ reportData {{ report(code:\"{}\") {{ rankings }} }} }}",
+                "query {{ reportData {{ report(code:\"{}\") {{ fights {{id, kill,name, phaseTransitions {{ id }}}}, rankings }} }} }}",
                 id
             )
         }
@@ -37,22 +37,22 @@ pub async fn last_fights(id: &str, key: &str, ty: Type) -> anyhow::Result<PostDi
         .json::<ResJson>()
         .await?;
     let post = match res.get_figths() {
-        Some(res) => {
-            let res_data = res.iter().last().unwrap();
+        Some(ress) => {
+            let res_data = ress.iter().last().unwrap();
             let post = PostDiscord::new(
                 client,
                 Some(res_data.get_id()),
                 res_data.get_killtype(),
                 res_data.get_name(),
                 res_data.get_phases()?,
-                None,
+                res.get_rankig_role().cloned()
             );
             post
         }
         None => {
             let post = PostDiscord::new(
                 client,
-                None,
+                Some(res.get_figths().unwrap().last().unwrap().get_id()),
                 super::res_json::JsonBool::NULL,
                 None,
                 None,

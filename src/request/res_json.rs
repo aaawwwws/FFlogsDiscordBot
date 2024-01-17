@@ -174,7 +174,7 @@ struct Encounter {
     name: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug,Clone)]
 #[allow(non_snake_case)]
 pub struct Figth {
     id: u64,
